@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarajya Wheels | Warehouse Stock In/Out System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            900: '#78350f',
+                        },
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @keyframes pulseScan {
+            0%, 100% { transform: translateY(0); opacity: 0.8; }
+            50% { transform: translateY(44px); opacity: 1; }
+        }
+        .scan-line {
+            animation: pulseScan 1.8s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased selection:bg-amber-500 selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Brand Identity -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-slate-950 font-extrabold shadow-inner shrink-0">
+                    <i data-lucide="disc" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-base sm:text-lg tracking-tight leading-none">SWARAJYA WHEELS</h1>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            GODOWN LIVE
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">Warehouse Stock In/Out & Rack Tracker • Badlapur East</p>
+                </div>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="openScannerModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer">
+                    <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                    <span class="hidden md:inline">Phone Barcode Scan</span>
+                    <span class="md:hidden">Scan</span>
+                </button>
+                <div class="hidden lg:flex items-center gap-2 text-xs text-slate-400 bg-slate-850 px-3 py-2 rounded-xl border border-slate-800">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Offline-Ready Local DB
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Top KPI Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Physical Stock</p>
+                    <p id="kpi-total-stock" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                    <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i> Shop + Godown
+                    </p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="package" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Today's Inward / Outward</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span id="kpi-in-today" class="text-2xl sm:text-3xl font-extrabold text-emerald-600">+0</span>
+                        <span class="text-slate-300 font-bold">/</span>
+                        <span id="kpi-out-today" class="text-2xl sm:text-3xl font-extrabold text-rose-600">-0</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Synced with Fitting Bay</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="arrow-left-right" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">FIFO / Old DOT Alerts</p>
+                    <p id="kpi-fifo-alerts" class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-1">0</p>
+                    <p class="text-xs text-amber-700 font-medium mt-1">Sell these batches first</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Low Stock Sizes</p>
+                    <p id="kpi-low-stock" class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-1">0</p>
+                    <p class="text-xs text-rose-600 font-medium mt-1">Below min rack threshold</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Primary Navigation Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-slate-200/80">
+            <div class="flex flex-wrap gap-1.5 w-full sm:w-auto">
+                <button onclick="switchTab('lookup')" id="tab-lookup" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition bg-slate-900 text-white shadow-sm cursor-pointer">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    Live Rack Lookup
+                </button>
+                <button onclick="switchTab('inward')" id="tab-inward" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer">
+                    <i data-lucide="arrow-down-circle" class="w-4 h-4 text-emerald-600"></i>
+                    Stock IN (Distributor)
+                </button>
+                <button onclick="switchTab('outward')" id="tab-outward" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer">
+                    <i data-lucide="arrow-up-circle" class="w-4 h-4 text-rose-600"></i>
+                    Stock OUT (Fitting Bay)
+                </button>
+                <button onclick="switchTab('logs')" id="tab-logs" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 text-blue-600"></i>
+                    Daily Tally & Logs
+                </button>
+            </div>
+
+            <!-- Quick Reset Demo Button -->
+            <button onclick="resetDemoData()" class="text-xs text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition flex items-center gap-1 ml-auto cursor-pointer">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Demo Data
+            </button>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: LIVE RACK LOOKUP & INVENTORY                                 -->
+        <!-- =================================================================== -->
+        <section id="view-lookup" class="space-y-4">
+            <!-- Instant Search Bar Card -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                        <input 
+                            type="text" 
+                            id="search-input" 
+                            oninput="renderInventory()"
+                            placeholder="Type size without slashes (e.g., 1956515, 2156016), brand (Yokohama, Michelin), or rack..." 
+                            class="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                        >
+                        <button onclick="clearSearch()" id="clear-search-btn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Brand Filter -->
+                    <select id="brand-filter" onchange="renderInventory()" class="px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Brands</option>
+                        <option value="Yokohama">Yokohama</option>
+                        <option value="Michelin">Michelin</option>
+                        <option value="Apollo">Apollo</option>
+                        <option value="Bridgestone">Bridgestone</option>
+                        <option value="MRF">MRF</option>
+                        <option value="JK Tyre">JK Tyre</option>
+                    </select>
+
+                    <!-- Stock Status Filter -->
+                    <select id="status-filter" onchange="renderInventory()" class="px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Stock Status</option>
+                        <option value="FIFO">FIFO Priority (Old DOT)</option>
+                        <option value="LOW">Low Stock Alert</option>
+                    </select>
+                </div>
+
+                <!-- Quick Size Chips for Instant Demo -->
+                <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <span class="text-xs font-semibold text-slate-400 uppercase">Quick Size Test:</span>
+                    <button onclick="quickSearch('1956515')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-xs font-semibold text-slate-700 transition cursor-pointer">195/65 R15</button>
+                    <button onclick="quickSearch('2156016')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-xs font-semibold text-slate-700 transition cursor-pointer">215/60 R16</button>
+                    <button onclick="quickSearch('1658014')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-xs font-semibold text-slate-700 transition cursor-pointer">165/80 R14</button>
+                    <button onclick="quickSearch('1856515')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-xs font-semibold text-slate-700 transition cursor-pointer">185/65 R15</button>
+                    <button onclick="quickSearch('909012')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-xs font-semibold text-slate-700 transition cursor-pointer">90/90-12 (2W)</button>
+                </div>
+            </div>
+
+            <!-- Inventory Table / Cards -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="py-3.5 px-4">Tyre Size & Pattern</th>
+                                <th class="py-3.5 px-4">Brand / Segment</th>
+                                <th class="py-3.5 px-4">Rack Location</th>
+                                <th class="py-3.5 px-4 text-center">Shop / Godown</th>
+                                <th class="py-3.5 px-4">Oldest DOT (FIFO)</th>
+                                <th class="py-3.5 px-4 text-right">Quick Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="hidden py-12 text-center px-4">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="search-x" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">No matching tyres found</h3>
+                    <p class="text-xs text-slate-500 mt-1">Try searching by numbers only (e.g., <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">1956515</span>) or clear your filters.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: STOCK INWARD (DISTRIBUTOR DELIVERY)                          -->
+        <!-- =================================================================== -->
+        <section id="view-inward" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Form -->
+                <div class="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80">
+                    <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                <i data-lucide="truck" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Record Stock Inward (Godown Entry)</h2>
+                                <p class="text-xs text-slate-500">Log new tyres received from distributor challan or invoice</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openScannerModal('inward')" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer">
+                            <i data-lucide="scan-barcode" class="w-4 h-4"></i> Scan Tyre Barcode
+                        </button>
+                    </div>
+
+                    <form id="inward-form" onsubmit="handleStockInward(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Select Tyre SKU *</label>
+                                <select id="in-sku" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Quantity Received *</label>
+                                <input type="number" id="in-qty" min="1" max="200" value="4" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">DOT Mfg Week/Year *</label>
+                                <input type="text" id="in-dot" placeholder="e.g., 3826" value="4026" maxlength="4" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Destination Storage *</label>
+                                <select id="in-location" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    <option value="godown">Main Godown Rack</option>
+                                    <option value="shop">Front Shop Display</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Distributor / Challan No.</label>
+                                <input type="text" id="in-ref" placeholder="e.g., YOKO-INV-884" value="YOKO-DIST-902" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Tyre Serial Numbers (Optional for Warranty Tracking)</label>
+                            <input type="text" id="in-serials" placeholder="e.g., YK99281, YK99282, YK99283, YK99284" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-end gap-3">
+                            <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-sm transition cursor-pointer">
+                                <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                                Add Stock to Warehouse
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right Info Card -->
+                <div class="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-4">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Why Godown Staff Love This
+                        </span>
+                        <h3 class="text-lg font-bold leading-snug">Zero-Mistake Unloading & Rack Assignment</h3>
+                        <ul class="mt-4 space-y-3 text-sm text-slate-300">
+                            <li class="flex items-start gap-2.5">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <span>Staff scan barcodes on their own phone while unloading the distributor tempo—no manual register writing.</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <span>System automatically remembers which rack bay holds each size so helpers find tyres in 10 seconds.</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <span>DOT manufacturing week is logged so older stock is always pushed to the front.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
+                        Works alongside your existing billing software with zero duplicate invoicing.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: STOCK OUTWARD (DISPATCH TO FITTING BAY)                      -->
+        <!-- =================================================================== -->
+        <section id="view-outward" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Form -->
+                <div class="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80">
+                    <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                                <i data-lucide="wrench" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Dispatch Stock Out (To Fitting Bay)</h2>
+                                <p class="text-xs text-slate-500">Deduct tyres moved from godown/rack to vehicle fitting bay</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openScannerModal('outward')" class="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer">
+                            <i data-lucide="scan-barcode" class="w-4 h-4"></i> Quick Scan Out
+                        </button>
+                    </div>
+
+                    <form id="outward-form" onsubmit="handleStockOutward(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Select Tyre SKU *</label>
+                                <select id="out-sku" onchange="updateOutwardStockHint()" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <!-- Populated by JS -->
+                                </select>
+                                <p id="out-stock-hint" class="text-xs font-semibold text-slate-500 mt-1.5">Available: --</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Quantity Dispatched *</label>
+                                <input type="number" id="out-qty" min="1" max="50" value="2" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Vehicle Reg. No. *</label>
+                                <input type="text" id="out-vehicle" placeholder="e.g., MH-05-EJ-4412" value="MH-05-DQ-7821" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono uppercase font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Pulled From *</label>
+                                <select id="out-source" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <option value="godown">Main Godown Rack</option>
+                                    <option value="shop">Front Shop Display</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Dispatch Reason</label>
+                                <select id="out-reason" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <option value="Customer Fitting">Customer Fitting</option>
+                                    <option value="Distributor Warranty Claim">Warranty Claim Return</option>
+                                    <option value="Dealer Transfer">B2B / Dealer Transfer</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Dispatched Tyre Serial No. (Warranty Proof)</label>
+                            <input type="text" id="out-serial" placeholder="e.g., YK88412, YK88413" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-end">
+                            <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-3 rounded-xl shadow-sm transition cursor-pointer">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                Confirm Stock Outward
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right FIFO Warning Card -->
+                <div class="bg-amber-50 border border-amber-200 p-5 sm:p-6 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center mb-3">
+                            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-amber-950">Stop Unbilled Fitting-Bay Losses</h3>
+                        <p class="text-xs text-amber-900/80 mt-2 leading-relaxed">
+                            During rush hours at Swarajya Wheels, fitters pull tyres from the godown straight to the alignment bay. Logging the <strong>Vehicle Number</strong> here ensures that at 9:00 PM closing, every dispatched tyre matches an invoice in your billing software.
+                        </p>
+                    </div>
+                    <div class="mt-5 p-3 bg-white/80 rounded-xl border border-amber-200/80">
+                        <p class="text-[11px] font-bold text-amber-900 uppercase">Pro Tip for Staff:</p>
+                        <p class="text-xs text-slate-700 mt-0.5">Always pick the tyre batch highlighted in <strong>amber (Oldest DOT)</strong> first.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 4: DAILY TALLY & MOVEMENT LOGS                                  -->
+        <!-- =================================================================== -->
+        <section id="view-logs" class="hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Shift-End Reconciliation & Movement Audit Log</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Match total outward dispatches below against your billing software's daily sales count</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+                        Inward Today: <span id="log-summary-in">0</span> Tyres
+                    </div>
+                    <div class="px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800">
+                        Outward Today: <span id="log-summary-out">0</span> Tyres
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="py-3.5 px-4">Time</th>
+                                <th class="py-3.5 px-4">Movement</th>
+                                <th class="py-3.5 px-4">Tyre Size & Brand</th>
+                                <th class="py-3.5 px-4 text-center">Qty</th>
+                                <th class="py-3.5 px-4">Vehicle / Challan Ref</th>
+                                <th class="py-3.5 px-4">Serial / DOT Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-tbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- SIMULATED PHONE BARCODE SCANNER MODAL                               -->
+    <!-- =================================================================== -->
+    <div id="scanner-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 text-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <h3 class="font-bold text-sm">Smartphone Companion Scanner</h3>
+                </div>
+                <button onclick="closeScannerModal()" class="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 text-center">
+                <!-- Simulated Camera Viewfinder -->
+                <div class="relative w-64 h-40 mx-auto bg-slate-950 rounded-2xl border-2 border-amber-500/70 flex flex-col items-center justify-center overflow-hidden mb-4">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 shadow-[0_0_12px_#fbbf24] scan-line"></div>
+                    <i data-lucide="barcode" class="w-20 h-20 text-slate-600"></i>
+                    <p class="text-[11px] font-mono text-amber-400 mt-1">Align Tyre Sidewall Barcode</p>
+                </div>
+
+                <p class="text-xs text-slate-300 mb-4">
+                    In live deployment, godown staff open this link on any Android/iPhone camera. Click below to simulate scanning a tyre label:
+                </p>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button onclick="simulateBarcodeScan('inward')" class="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition cursor-pointer">
+                        <i data-lucide="arrow-down-circle" class="w-4 h-4"></i> Simulate Scan IN
+                    </button>
+                    <button onclick="simulateBarcodeScan('outward')" class="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition cursor-pointer">
+                        <i data-lucide="arrow-up-circle" class="w-4 h-4"></i> Simulate Scan OUT
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initial Realistic Inventory tailored to Swarajya Wheels (Badlapur)
+        const DEFAULT_INVENTORY = [
+            {
+                id: 'SKU-101',
+                size: '195/65 R15',
+                compactSize: '1956515',
+                brand: 'Yokohama',
+                pattern: 'Earth-1 E400',
+                segment: '4W Car',
+                rack: 'Rack A-1 (Front)',
+                shopQty: 4,
+                godownQty: 14,
+                minThreshold: 6,
+                oldestDot: '1426',
+                isOldDot: true, // Flagged for FIFO priority
+                vehicles: 'Honda City, Dzire, Ertiga'
+            },
+            {
+                id: 'SKU-102',
+                size: '195/65 R15',
+                compactSize: '1956515',
+                brand: 'Michelin',
+                pattern: 'Energy XM2+',
+                segment: '4W Car',
+                rack: 'Rack A-2',
+                shopQty: 2,
+                godownQty: 6,
+                minThreshold: 6,
+                oldestDot: '3426',
+                isOldDot: false,
+                vehicles: 'Honda City, Verna, Ciaz'
+            },
+            {
+                id: 'SKU-103',
+                size: '215/60 R16',
+                compactSize: '2156016',
+                brand: 'Yokohama',
+                pattern: 'BluEarth-GT AE51',
+                segment: 'Compact SUV',
+                rack: 'Rack B-1 (SUV)',
+                shopQty: 4,
+                godownQty: 10,
+                minThreshold: 8,
+                oldestDot: '3626',
+                isOldDot: false,
+                vehicles: 'Creta, Seltos, Grand Vitara'
+            },
+            {
+                id: 'SKU-104',
+                size: '215/60 R16',
+                compactSize: '2156016',
+                brand: 'Bridgestone',
+                pattern: 'Turanza T005',
+                segment: 'Compact SUV',
+                rack: 'Rack B-2 (SUV)',
+                shopQty: 2,
+                godownQty: 2,
+                minThreshold: 6,
+                oldestDot: '1226',
+                isOldDot: true,
+                vehicles: 'Creta, Seltos, Brezza'
+            },
+            {
+                id: 'SKU-105',
+                size: '165/80 R14',
+                compactSize: '1658014',
+                brand: 'Apollo',
+                pattern: 'Amazer 4G Life',
+                segment: '4W Hatchback',
+                rack: 'Rack C-1',
+                shopQty: 4,
+                godownQty: 16,
+                minThreshold: 8,
+                oldestDot: '3526',
+                isOldDot: false,
+                vehicles: 'Swift, WagonR, Tiago'
+            },
+            {
+                id: 'SKU-106',
+                size: '185/65 R15',
+                compactSize: '1856515',
+                brand: 'MRF',
+                pattern: 'ZVTV Tubeless',
+                segment: '4W Car',
+                rack: 'Rack C-3',
+                shopQty: 2,
+                godownQty: 1,
+                minThreshold: 6,
+                oldestDot: '3126',
+                isOldDot: false,
+                vehicles: 'Baleno, i20, Nexon Base'
+            },
+            {
+                id: 'SKU-107',
+                size: '235/65 R17',
+                compactSize: '2356517',
+                brand: 'Yokohama',
+                pattern: 'Geolandar A/T G015',
+                segment: 'SUV / 4x4',
+                rack: 'Godown Bay D-1',
+                shopQty: 2,
+                godownQty: 6,
+                minThreshold: 4,
+                oldestDot: '1626',
+                isOldDot: true,
+                vehicles: 'XUV700, Harrier, Scorpio-N'
+            },
+            {
+                id: 'SKU-108',
+                size: '90/90-12',
+                compactSize: '909012',
+                brand: 'JK Tyre',
+                pattern: 'Blaze BA21 TL',
+                segment: '2W Scooter',
+                rack: 'Mezzanine 2W-A',
+                shopQty: 6,
+                godownQty: 18,
+                minThreshold: 10,
+                oldestDot: '3826',
+                isOldDot: false,
+                vehicles: 'Activa, Jupiter, Access 125'
+            }
+        ];
+
+        const DEFAULT_LOGS = [
+            {
+                time: '06:45 PM',
+                type: 'OUT',
+                skuText: '195/65 R15 • Yokohama Earth-1',
+                qty: 4,
+                ref: 'MH-05-EJ-9104 (Customer Fitting)',
+                note: 'DOT 1426 • Serials: YK401–YK404'
+            },
+            {
+                time: '04:20 PM',
+                type: 'IN',
+                skuText: '215/60 R16 • Yokohama BluEarth-GT',
+                qty: 8,
+                ref: 'Challan #YOKO-8841 (Distributor)',
+                note: 'DOT 3626 • Added to Godown Rack B-1'
+            },
+            {
+                time: '01:15 PM',
+                type: 'OUT',
+                skuText: '165/80 R14 • Apollo Amazer 4G',
+                qty: 2,
+                ref: 'MH-05-CM-3319 (Customer Fitting)',
+                note: 'DOT 3526 • Serials: AP8821, AP8822'
+            }
+        ];
+
+        // State Management (In-Memory)
+        let inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
+        let logs = JSON.parse(JSON.stringify(DEFAULT_LOGS));
+        let inTodayCount = 8;
+        let outTodayCount = 6;
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            populateSkuDropdowns();
+            renderAll();
+        });
+
+        function renderAll() {
+            updateKPIs();
+            renderInventory();
+            renderLogs();
+            updateOutwardStockHint();
+            lucide.createIcons();
+        }
+
+        // Update Top KPI Cards
+        function updateKPIs() {
+            const totalStock = inventory.reduce((sum, item) => sum + item.shopQty + item.godownQty, 0);
+            const fifoAlerts = inventory.filter(item => item.isOldDot && (item.shopQty + item.godownQty) > 0).length;
+            const lowStock = inventory.filter(item => (item.shopQty + item.godownQty) <= item.minThreshold).length;
+
+            document.getElementById('kpi-total-stock').textContent = totalStock;
+            document.getElementById('kpi-in-today').textContent = `+${inTodayCount}`;
+            document.getElementById('kpi-out-today').textContent = `-${outTodayCount}`;
+            document.getElementById('kpi-fifo-alerts').textContent = fifoAlerts;
+            document.getElementById('kpi-low-stock').textContent = lowStock;
+
+            document.getElementById('log-summary-in').textContent = inTodayCount;
+            document.getElementById('log-summary-out').textContent = outTodayCount;
+        }
+
+        // Switch Tabs
+        function switchTab(tabName) {
+            const tabs = ['lookup', 'inward', 'outward', 'logs'];
+            tabs.forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tabName) {
+                    view.classList.remove('hidden');
+                    btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                    btn.classList.add('bg-slate-900', 'text-white', 'shadow-sm');
+                } else {
+                    view.classList.add('hidden');
+                    btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+                    btn.classList.remove('bg-slate-900', 'text-white', 'shadow-sm');
+                }
+            });
+            lucide.createIcons();
+        }
+
+        // Quick Search Helper
+        function quickSearch(query) {
+            const input = document.getElementById('search-input');
+            input.value = query;
+            renderInventory();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('brand-filter').value = 'ALL';
+            document.getElementById('status-filter').value = 'ALL';
+            renderInventory();
+        }
+
+        // Render Live Rack Lookup Table
+        function renderInventory() {
+            const rawQuery = document.getElementById('search-input').value.trim().toLowerCase();
+            const normalizedQuery = rawQuery.replace(/[^a-z0-9]/g, '');
+            const brandFilter = document.getElementById('brand-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
+
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (rawQuery.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            const filtered = inventory.filter(item => {
+                const total = item.shopQty + item.godownQty;
+                const matchesQuery = !rawQuery ||
+                    item.size.toLowerCase().includes(rawQuery) ||
+                    item.compactSize.includes(normalizedQuery) ||
+                    item.brand.toLowerCase().includes(rawQuery) ||
+                    item.pattern.toLowerCase().includes(rawQuery) ||
+                    item.rack.toLowerCase().includes(rawQuery) ||
+                    item.vehicles.toLowerCase().includes(rawQuery);
+
+                const matchesBrand = brandFilter === 'ALL' || item.brand === brandFilter;
+                const matchesStatus = statusFilter === 'ALL' ||
+                    (statusFilter === 'FIFO' && item.isOldDot) ||
+                    (statusFilter === 'LOW' && total <= item.minThreshold);
+
+                return matchesQuery && matchesBrand && matchesStatus;
+            });
+
+            const tbody = document.getElementById('inventory-tbody');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filtered.map(item => {
+                const total = item.shopQty + item.godownQty;
+                const isLow = total <= item.minThreshold;
+
+                return `
+                    <tr class="hover:bg-slate-50/90 transition">
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center gap-2">
+                                <span class="font-extrabold text-slate-900 text-base">${item.size}</span>
+                                ${isLow ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">LOW STOCK</span>` : ''}
+                            </div>
+                            <div class="text-xs font-medium text-slate-600 mt-0.5">${item.pattern}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Fits: ${item.vehicles}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-bold text-slate-800">${item.brand}</span>
+                            <div class="text-xs text-slate-500 mt-0.5">${item.segment}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-amber-600"></i>
+                                ${item.rack}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <div class="inline-flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                                <div class="text-center">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase">Shop</span>
+                                    <span class="font-bold text-slate-800">${item.shopQty}</span>
+                                </div>
+                                <span class="text-slate-300">|</span>
+                                <div class="text-center">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase">Godown</span>
+                                    <span class="font-bold text-slate-800">${item.godownQty}</span>
+                                </div>
+                                <span class="text-slate-300">=</span>
+                                <div class="text-center">
+                                    <span class="block text-[10px] font-bold text-amber-600 uppercase">Total</span>
+                                    <span class="font-extrabold text-base ${isLow ? 'text-rose-600' : 'text-emerald-700'}">${total}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            ${item.isOldDot ? `
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
+                                    DOT ${item.oldestDot} (Sell 1st)
+                                </span>
+                            ` : `
+                                <span class="text-xs font-mono font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                    DOT ${item.oldestDot}
+                                </span>
+                            `}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="jumpToStockAction('inward', '${item.id}')" title="Add Stock In" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition cursor-pointer">
+                                    + IN
+                                </button>
+                                <button onclick="jumpToStockAction('outward', '${item.id}')" title="Dispatch Stock Out" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition cursor-pointer">
+                                    - OUT
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // Populate SKU Select Dropdowns
+        function populateSkuDropdowns() {
+            const optionsHtml = inventory.map(item =>
+                `<option value="${item.id}">${item.size} — ${item.brand} ${item.pattern} (${item.rack})</option>`
+            ).join('');
+
+            document.getElementById('in-sku').innerHTML = optionsHtml;
+            document.getElementById('out-sku').innerHTML = optionsHtml;
+        }
+
+        function updateOutwardStockHint() {
+            const skuId = document.getElementById('out-sku').value;
+            const item = inventory.find(i => i.id === skuId);
+            if (item) {
+                document.getElementById('out-stock-hint').innerHTML =
+                    `Available: <span class="text-slate-900 font-bold">${item.shopQty} in Shop</span> + <span class="text-slate-900 font-bold">${item.godownQty} in Godown</span> (Oldest DOT: ${item.oldestDot})`;
+            }
+        }
+
+        // Jump from Lookup Table directly to Inward or Outward form
+        function jumpToStockAction(mode, skuId) {
+            switchTab(mode);
+            if (mode === 'inward') {
+                document.getElementById('in-sku').value = skuId;
+            } else {
+                document.getElementById('out-sku').value = skuId;
+                updateOutwardStockHint();
+            }
+        }
+
+        // Handle Stock Inward Submission
+        function handleStockInward(e) {
+            e.preventDefault();
+            const skuId = document.getElementById('in-sku').value;
+            const qty = parseInt(document.getElementById('in-qty').value, 10);
+            const dot = document.getElementById('in-dot').value.trim() || '4026';
+            const location = document.getElementById('in-location').value;
+            const ref = document.getElementById('in-ref').value.trim() || 'Direct Distributor Delivery';
+            const serials = document.getElementById('in-serials').value.trim();
+
+            const item = inventory.find(i => i.id === skuId);
+            if (!item || qty <= 0) return;
+
+            if (location === 'godown') {
+                item.godownQty += qty;
+            } else {
+                item.shopQty += qty;
+            }
+
+            inTodayCount += qty;
+
+            const timeNow = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            logs.unshift({
+                time: timeNow,
+                type: 'IN',
+                skuText: `${item.size} • ${item.brand} ${item.pattern}`,
+                qty: qty,
+                ref: `${ref} (${location === 'godown' ? 'Godown' : 'Shop'})`,
+                note: `DOT ${dot}${serials ? ' • Serials: ' + serials : ''}`
+            });
+
+            document.getElementById('in-serials').value = '';
+            renderAll();
+            showToast(`Added +${qty} tyres (${item.size} ${item.brand}) to ${location === 'godown' ? 'Godown' : 'Shop'}!`, 'success');
+            switchTab('lookup');
+        }
+
+        // Handle Stock Outward Submission
+        function handleStockOutward(e) {
+            e.preventDefault();
+            const skuId = document.getElementById('out-sku').value;
+            const qty = parseInt(document.getElementById('out-qty').value, 10);
+            const vehicle = document.getElementById('out-vehicle').value.trim().toUpperCase() || 'WALK-IN';
+            const source = document.getElementById('out-source').value;
+            const reason = document.getElementById('out-reason').value;
+            const serial = document.getElementById('out-serial').value.trim();
+
+            const item = inventory.find(i => i.id === skuId);
+            if (!item || qty <= 0) return;
+
+            const totalAvailable = item.shopQty + item.godownQty;
+            if (qty > totalAvailable) {
+                showToast(`Only ${totalAvailable} tyres available in stock for ${item.size} ${item.brand}!`, 'error');
+                return;
+            }
+
+            // Deduct from preferred location first, then overflow to other
+            if (source === 'godown') {
+                if (item.godownQty >= qty) {
+                    item.godownQty -= qty;
+                } else {
+                    const rem = qty - item.godownQty;
+                    item.godownQty = 0;
+                    item.shopQty -= rem;
+                }
+            } else {
+                if (item.shopQty >= qty) {
+                    item.shopQty -= qty;
+                } else {
+                    const rem = qty - item.shopQty;
+                    item.shopQty = 0;
+                    item.godownQty -= rem;
+                }
+            }
+
+            // If old DOT batch is cleared out, update FIFO status
+            if ((item.shopQty + item.godownQty) <= 4 && item.isOldDot) {
+                item.isOldDot = false;
+                item.oldestDot = '3826';
+            }
+
+            outTodayCount += qty;
+
+            const timeNow = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            logs.unshift({
+                time: timeNow,
+                type: 'OUT',
+                skuText: `${item.size} • ${item.brand} ${item.pattern}`,
+                qty: qty,
+                ref: `${vehicle} (${reason})`,
+                note: `From ${source === 'godown' ? 'Godown' : 'Shop'}${serial ? ' • Serial: ' + serial : ''}`
+            });
+
+            document.getElementById('out-serial').value = '';
+            renderAll();
+            showToast(`Dispatched -${qty} tyres (${item.size} ${item.brand}) for ${vehicle}`, 'warning');
+            switchTab('lookup');
+        }
+
+        // Render Movement Logs
+        function renderLogs() {
+            const tbody = document.getElementById('logs-tbody');
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3.5 px-4 font-mono text-xs font-semibold text-slate-500 whitespace-nowrap">${log.time}</td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        ${log.type === 'IN' ? `
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> STOCK IN
+                            </span>
+                        ` : `
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> STOCK OUT
+                            </span>
+                        `}
+                    </td>
+                    <td class="py-3.5 px-4 font-bold text-slate-800">${log.skuText}</td>
+                    <td class="py-3.5 px-4 text-center font-extrabold ${log.type === 'IN' ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${log.type === 'IN' ? '+' : '-'}${log.qty}
+                    </td>
+                    <td class="py-3.5 px-4 font-medium text-slate-700">${log.ref}</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-500 font-mono">${log.note}</td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Barcode Scanner Modal Controls
+        function openScannerModal() {
+            document.getElementById('scanner-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeScannerModal() {
+            document.getElementById('scanner-modal').classList.add('hidden');
+        }
+
+        function simulateBarcodeScan(mode) {
+            closeScannerModal();
+            // Pick a popular SKU to auto-fill from simulated scan
+            const scannedSku = inventory[0]; // 195/65 R15 Yokohama Earth-1
+            switchTab(mode);
+            if (mode === 'inward') {
+                document.getElementById('in-sku').value = scannedSku.id;
+                document.getElementById('in-qty').value = 4;
+                document.getElementById('in-serials').value = 'YK-SCN-8810, YK-SCN-8811, YK-SCN-8812, YK-SCN-8813';
+                showToast(`Scanned Barcode: ${scannedSku.size} ${scannedSku.brand} (Ready for Stock IN)`, 'success');
+            } else {
+                document.getElementById('out-sku').value = scannedSku.id;
+                document.getElementById('out-qty').value = 2;
+                document.getElementById('out-serial').value = 'YK-SCN-401, YK-SCN-402';
+                updateOutwardStockHint();
+                showToast(`Scanned Barcode: ${scannedSku.size} ${scannedSku.brand} (Ready for Dispatch)`, 'warning');
+            }
+        }
+
+        // Reset Demo State
+        function resetDemoData() {
+            inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
+            logs = JSON.parse(JSON.stringify(DEFAULT_LOGS));
+            inTodayCount = 8;
+            outTodayCount = 6;
+            clearSearch();
+            renderAll();
+            showToast('Demo inventory reset to initial Swarajya Wheels sample stock.', 'info');
+        }
+
+        // Custom Non-Blocking Toast Notification
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-slate-900 border-emerald-500 text-white',
+                warning: 'bg-slate-900 border-amber-500 text-white',
+                error: 'bg-rose-950 border-rose-500 text-white',
+                info: 'bg-slate-900 border-slate-600 text-white'
+            };
+
+            const iconName = {
+                success: 'check-circle-2',
+                warning: 'arrow-up-right',
+                error: 'alert-circle',
+                info: 'info'
+            }[type];
+
+            const iconColor = {
+                success: 'text-emerald-400',
+                warning: 'text-amber-400',
+                error: 'text-rose-400',
+                info: 'text-blue-400'
+            }[type];
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 ${styles[type]}`;
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="w-5 h-5 shrink-0 ${iconColor}"></i>
+                <span class="flex-1">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
